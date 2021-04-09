@@ -1,6 +1,6 @@
 pub struct ConfStruct {
-    exclude_patterns: Vec<String>,
-    source: String,
-    destination: String,
-    help: bool,
+    pub exclude_patterns: Vec<String>,
+    pub source: String,
+    pub destination: String,
+    pub help: bool,
 }
