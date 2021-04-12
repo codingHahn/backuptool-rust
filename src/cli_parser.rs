@@ -148,6 +148,10 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
             break;
         }
     }
+
+    if conf_source.as_os_str().is_empty() || conf_dest.as_os_str().is_empty() {
+        println!("Error: Source or Destination not given");
+    }
     
     //return ConfStruct
     configuration::ConfStruct {
