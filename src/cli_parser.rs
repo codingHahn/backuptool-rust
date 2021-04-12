@@ -85,7 +85,7 @@ fn print_help_message() {
     println!("Destination: the destination for the backup");
 }
 
-pub fn parse_cli_options() -> configuration::ConfStruct {
+pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
     // first collect all fields of ConfStruct seperately
     let mut conf_exclude_strings: Vec<String> = Vec::new();
     let mut conf_exclude_regex: Vec<String> = Vec::new();
@@ -93,7 +93,6 @@ pub fn parse_cli_options() -> configuration::ConfStruct {
     let mut conf_dest : PathBuf = PathBuf::new();
     let mut conf_help: bool = false;
 
-    let args: Vec<String> = env::args().collect();
     // transform all args into conf_struct content
     let mut index: usize = 1; //first arg: program name
     loop {
@@ -154,4 +153,9 @@ pub fn parse_cli_options() -> configuration::ConfStruct {
         source: conf_source,
         help: conf_help,
     }
+}
+
+pub fn parse_cli_options() -> configuration::ConfStruct {
+    let args: Vec<String> = env::args().collect();
+    parse_options(args)
 }
