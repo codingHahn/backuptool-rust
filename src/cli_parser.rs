@@ -80,13 +80,18 @@ fn print_error(index: &usize, msg: String) {
 }
 
 fn print_help_message() {
-    println!("usage: backup-tool <-e EXCLUDE_PATTERNS> <-er Exclude_REGEX> [Source] [Destination]");
-    println!("-e: Folder or File to exclude (can be given more than once)");
-    println!("-er: Regular expression to exclude (can be given more than once)");
-    println!("-v: verbose output");
-    println!("-?: help");
-    println!("Source: the source for the backup");
-    println!("Destination: the destination for the backup");
+    // Help message:
+    println!(r#"
+    usage: backup-tool [options] <source> <destination>
+        <source>        : Sourcepath for the backup
+        <destination>   : Destination path for the backup
+        options :
+            -e          : Folder or File to exclude (can be given more than once)
+            -er         : Regular expression to exclude (can be given more than once)
+            -v          : verbose output
+            -?          : help
+    "#);
+    // End Help message
 }
 
 pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
