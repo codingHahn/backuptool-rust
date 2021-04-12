@@ -6,5 +6,5 @@ pub struct ConfStruct {
     pub exclude_regex: RegexSet,
     pub source: PathBuf,
     pub destination: PathBuf,
-    pub help: bool,
+    pub verbose: bool,
 }
