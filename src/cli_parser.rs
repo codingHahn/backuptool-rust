@@ -10,6 +10,7 @@ enum CLIOptions {
     ExcludeString { string: String },
     ExcludeRegex { regex: String },
     Help,
+    Verbose,
     End,
 }
 
@@ -54,6 +55,8 @@ fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOption
             }
             // help tag
             "-?" => return (index + 1, Result::Ok(CLIOptions::Help)),
+            // verbose tag
+            "-v" => return (index + 1, Result::Ok(CLIOptions::Verbose)),
             // other: source + destination
             _ => match args.get(index + 1) {
                 Option::None => return (index, Result::Err(String::from("no destination given"))),
@@ -80,6 +83,7 @@ fn print_help_message() {
     println!("usage: backup-tool <-e EXCLUDE_PATTERNS> <-er Exclude_REGEX> [Source] [Destination]");
     println!("-e: Folder or File to exclude (can be given more than once)");
     println!("-er: Regular expression to exclude (can be given more than once)");
+    println!("-v: verbose output");
     println!("-?: help");
     println!("Source: the source for the backup");
     println!("Destination: the destination for the backup");
@@ -91,7 +95,7 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
     let mut conf_exclude_regex: Vec<String> = Vec::new();
     let mut conf_source: PathBuf = PathBuf::new();
     let mut conf_dest : PathBuf = PathBuf::new();
-    let mut conf_help: bool = false;
+    let mut conf_verbose: bool = false;
 
     // transform all args into conf_struct content
     let mut index: usize = 1; //first arg: program name
@@ -130,9 +134,9 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
                     conf_exclude_regex.push(regex);
                 },
                 CLIOptions::End => finished = true,
+                CLIOptions::Verbose => conf_verbose = true,
                 CLIOptions::Help => {
                     print_help_message();
-                    conf_help = true;
                 }
             },
         }
@@ -149,9 +153,9 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
     configuration::ConfStruct {
         exclude_strings: conf_exclude_strings,
         exclude_regex: RegexSet::new(conf_exclude_regex).unwrap(),
-        destination: conf_dest,
         source: conf_source,
-        help: conf_help,
+        destination: conf_dest,
+        verbose: conf_verbose,
     }
 }
 
