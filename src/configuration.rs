@@ -1,6 +1,10 @@
+use regex::RegexSet;
+use std::path::PathBuf;
+
 pub struct ConfStruct {
-    pub exclude_patterns: Vec<String>,
-    pub source: String,
-    pub destination: String,
-    pub help: bool,
+    pub exclude_strings: Vec<String>,
+    pub exclude_regex: RegexSet,
+    pub source: PathBuf,
+    pub destination: PathBuf,
+    pub verbose: bool,
 }
