@@ -1,14 +1,21 @@
 use crate::configuration;
 use std::env;
-use std::result::Result;
 use std::path::PathBuf;
+use std::result::Result;
 
 use regex::RegexSet;
 
 enum CLIOptions {
-    SourceDestination { source: PathBuf, destination: PathBuf },
-    ExcludeString { string: String },
-    ExcludeRegex { regex: String },
+    SourceDestination {
+        source: PathBuf,
+        destination: PathBuf,
+    },
+    ExcludeString {
+        string: String,
+    },
+    ExcludeRegex {
+        regex: String,
+    },
     Help,
     Verbose,
     End,
@@ -52,7 +59,7 @@ fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOption
                         }),
                     )
                 }
-            }
+            },
             // help tag
             "-?" => return (index + 1, Result::Ok(CLIOptions::Help)),
             // verbose tag
@@ -81,7 +88,8 @@ fn print_error(index: &usize, msg: String) {
 
 fn print_help_message() {
     // Help message:
-    println!(r#"
+    println!(
+        r#"
     usage: backup-tool [options] <source> <destination>
         <source>        : Sourcepath for the backup
         <destination>   : Destination path for the backup
@@ -90,17 +98,23 @@ fn print_help_message() {
             -er         : Regular expression to exclude (can be given more than once)
             -v          : verbose output
             -?          : help
-    "#);
+    "#
+    );
     // End Help message
 }
 
 pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
     // first collect all fields of ConfStruct seperately
-    let mut conf_exclude_strings: Vec<String> = Vec::new();
+    let mut conf_struct = configuration::ConfStruct {
+        exclude_strings: Vec::new(),
+        exclude_regex: RegexSet::new(&[""]).unwrap(), //empty RegexSet, whill be replaced later
+        source: PathBuf::new(),
+        destination: PathBuf::new(),
+        verbose: false,
+    };
+
+    // Vec<String> to collect all regex first (RegexSet doesn't have .push())
     let mut conf_exclude_regex: Vec<String> = Vec::new();
-    let mut conf_source: PathBuf = PathBuf::new();
-    let mut conf_dest : PathBuf = PathBuf::new();
-    let mut conf_verbose: bool = false;
 
     // transform all args into conf_struct content
     let mut index: usize = 1; //first arg: program name
@@ -121,25 +135,25 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
                     source,
                     destination,
                 } => {
-                    if !conf_dest.as_os_str().is_empty() {
+                    if !conf_struct.destination.as_os_str().is_empty() {
                         print_error(&index, String::from("destination given to often"));
                         error = true;
-                    } else if !conf_source.as_os_str().is_empty() {
+                    } else if !conf_struct.source.as_os_str().is_empty() {
                         print_error(&index, String::from("source given to often"));
                         error = true;
                     } else {
-                        conf_dest = destination;
-                        conf_source = source;
+                        conf_struct.destination = destination;
+                        conf_struct.source = source;
                     }
                 }
                 CLIOptions::ExcludeString { string } => {
-                    conf_exclude_strings.push(string);
-                },
+                    conf_struct.exclude_strings.push(string);
+                }
                 CLIOptions::ExcludeRegex { regex } => {
                     conf_exclude_regex.push(regex);
-                },
+                }
                 CLIOptions::End => finished = true,
-                CLIOptions::Verbose => conf_verbose = true,
+                CLIOptions::Verbose => conf_struct.verbose = true,
                 CLIOptions::Help => {
                     print_help_message();
                 }
@@ -147,25 +161,21 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
         }
 
         if error {
-            break;
+            panic!();
         }
         if finished {
             break;
         }
     }
 
-    if conf_source.as_os_str().is_empty() || conf_dest.as_os_str().is_empty() {
-        println!("Error: Source or Destination not given");
+    if conf_struct.source.as_os_str().is_empty() || conf_struct.destination.as_os_str().is_empty() {
+        print_error(&0, String::from("Source or Destination not given"));
+        panic!();
     }
-    
     //return ConfStruct
-    configuration::ConfStruct {
-        exclude_strings: conf_exclude_strings,
-        exclude_regex: RegexSet::new(conf_exclude_regex).unwrap(),
-        source: conf_source,
-        destination: conf_dest,
-        verbose: conf_verbose,
-    }
+    conf_struct.exclude_regex = RegexSet::new(conf_exclude_regex).unwrap();
+    //return
+    conf_struct
 }
 
 pub fn parse_cli_options() -> configuration::ConfStruct {
