@@ -70,9 +70,12 @@ fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOption
     }
 }
 
-fn print_error(index: &usize, msg: String) {
-    println!("Error at option at index {}, message: \"{}\"", index, msg);
-    println!("use \"-?\" for help");
+fn error_message(index: &usize, msg: String) -> String {
+    String::from("Error at option at index")
+        + index.to_string().as_str()
+        + String::from("message: ").as_str()
+        + msg.as_str()
+        + String::from("\nuse \"-?\" for help").as_str()
 }
 
 fn print_help_message() {
@@ -92,7 +95,7 @@ fn print_help_message() {
     // End Help message
 }
 
-pub fn parse_options(args: Vec<String>) -> ConfStruct {
+pub fn parse_options(args: Vec<String>) -> Result<ConfStruct, String> {
     // first collect all fields of ConfStruct seperately
     let mut conf_struct = ConfStruct {
         exclude_strings: Vec::new(),
@@ -108,16 +111,13 @@ pub fn parse_options(args: Vec<String>) -> ConfStruct {
     // transform all args into conf_struct content
     let mut index: usize = 1; //first arg: program name
     loop {
-        let mut error: bool = false;
         let mut finished: bool = false;
         let res = get_option_type(&args, index);
 
         index = res.0;
         match res.1 {
             Err(s) => {
-                print_error(&index, s);
-                error = true;
-                //use panic!() instead?
+                return Err(error_message(&index, s));
             }
             Ok(cli_opt) => match cli_opt {
                 CLIOptions::SourceDestination {
@@ -125,11 +125,12 @@ pub fn parse_options(args: Vec<String>) -> ConfStruct {
                     destination,
                 } => {
                     if !conf_struct.destination.as_os_str().is_empty() {
-                        print_error(&index, String::from("destination given to often"));
-                        error = true;
+                        return Err(error_message(
+                            &index,
+                            String::from("destination given to often"),
+                        ));
                     } else if !conf_struct.source.as_os_str().is_empty() {
-                        print_error(&index, String::from("source given to often"));
-                        error = true;
+                        return Err(error_message(&index, String::from("source given to often")));
                     } else {
                         conf_struct.destination = destination;
                         conf_struct.source = source;
@@ -148,26 +149,26 @@ pub fn parse_options(args: Vec<String>) -> ConfStruct {
                 }
             },
         }
-
-        if error {
-            panic!();
-        }
         if finished {
             break;
         }
     }
 
     if conf_struct.source.as_os_str().is_empty() || conf_struct.destination.as_os_str().is_empty() {
-        print_error(&0, String::from("Source or Destination not given"));
-        panic!();
+        return Err(error_message(
+            &0,
+            String::from("Source or Destination not given"),
+        ));
     }
     //return ConfStruct
     conf_struct.exclude_regex = RegexSet::new(conf_exclude_regex).unwrap();
     //return
-    conf_struct
+    Ok(conf_struct)
 }
 
-pub fn parse_cli_options() -> ConfStruct {
+// ConfStruct: Struct with configuration for Backup tool
+// String: Error Message
+pub fn parse_cli_options() -> Result<ConfStruct, String> {
     let args: Vec<String> = env::args().collect();
     parse_options(args)
 }

@@ -3,7 +3,6 @@ use crate::cli_parser;
 use regex::RegexSet;
 
 #[test]
-#[should_panic]
 fn no_src_dst() {
     //backup-tool -e yx -er
     //source and destination missing -> panic
@@ -13,7 +12,8 @@ fn no_src_dst() {
         String::from("yx"),
         String::from("-er"),
     ];
-    let _var = cli_parser::parse_options(args);
+    let conf = cli_parser::parse_options(args);
+    assert!(!conf.err().unwrap().is_empty());
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn minimal() {
         String::from("./"),          //source
         String::from("./backup"),    //destination
     ];
-    let conf = cli_parser::parse_options(args);
+    let conf = cli_parser::parse_options(args).unwrap();
 
     assert!(conf.exclude_strings.is_empty());
     assert_eq!(conf.source.to_str().unwrap(), "./");
@@ -46,7 +46,7 @@ fn all() {
         String::from("-v"),       //verbose = true
     ];
 
-    let conf = cli_parser::parse_options(args);
+    let conf = cli_parser::parse_options(args).unwrap();
 
     assert_eq!(conf.exclude_strings, vec![".bin"]);
     assert!(conf.exclude_regex.is_match("az"));
