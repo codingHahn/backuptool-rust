@@ -1,7 +1,6 @@
-use crate::configuration;
+use crate::configuration::ConfStruct;
 use std::env;
 use std::path::PathBuf;
-use std::result::Result;
 
 use regex::RegexSet;
 
@@ -24,20 +23,15 @@ enum CLIOptions {
 fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOptions, String>) {
     match args.get(index) {
         // Exclude pattern in next element
-        Option::None => return (index, Result::Ok(CLIOptions::End)),
-        Option::Some(arg0) => match arg0.as_str().trim() {
+        None => return (index, Ok(CLIOptions::End)),
+        Some(arg0) => match arg0.as_str().trim() {
             // Exclude String:
             "-e" => match args.get(index + 1) {
-                Option::None => {
-                    return (
-                        index,
-                        Result::Err(String::from("missing Argument after -e")),
-                    )
-                }
-                Option::Some(arg1) => {
+                None => return (index, Err(String::from("missing Argument after -e"))),
+                Some(arg1) => {
                     return (
                         index + 2,
-                        Result::Ok(CLIOptions::ExcludeString {
+                        Ok(CLIOptions::ExcludeString {
                             string: String::from(arg1),
                         }),
                     )
@@ -45,32 +39,27 @@ fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOption
             },
             //Exclude regex
             "-er" => match args.get(index + 1) {
-                Option::None => {
-                    return (
-                        index,
-                        Result::Err(String::from("missing Argument after -er")),
-                    )
-                }
-                Option::Some(arg1) => {
+                None => return (index, Err(String::from("missing Argument after -er"))),
+                Some(arg1) => {
                     return (
                         index + 2,
-                        Result::Ok(CLIOptions::ExcludeRegex {
+                        Ok(CLIOptions::ExcludeRegex {
                             regex: String::from(arg1),
                         }),
                     )
                 }
             },
             // help tag
-            "-?" => return (index + 1, Result::Ok(CLIOptions::Help)),
+            "-?" => return (index + 1, Ok(CLIOptions::Help)),
             // verbose tag
-            "-v" => return (index + 1, Result::Ok(CLIOptions::Verbose)),
+            "-v" => return (index + 1, Ok(CLIOptions::Verbose)),
             // other: source + destination
             _ => match args.get(index + 1) {
-                Option::None => return (index, Result::Err(String::from("no destination given"))),
-                Option::Some(arg1) => {
+                None => return (index, Err(String::from("no destination given"))),
+                Some(arg1) => {
                     return (
                         index + 2,
-                        Result::Ok(CLIOptions::SourceDestination {
+                        Ok(CLIOptions::SourceDestination {
                             source: PathBuf::from(arg0),
                             destination: PathBuf::from(arg1),
                         }),
@@ -103,9 +92,9 @@ fn print_help_message() {
     // End Help message
 }
 
-pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
+pub fn parse_options(args: Vec<String>) -> ConfStruct {
     // first collect all fields of ConfStruct seperately
-    let mut conf_struct = configuration::ConfStruct {
+    let mut conf_struct = ConfStruct {
         exclude_strings: Vec::new(),
         exclude_regex: RegexSet::new(&[""]).unwrap(), //empty RegexSet, whill be replaced later
         source: PathBuf::new(),
@@ -178,7 +167,7 @@ pub fn parse_options(args: Vec<String>) -> configuration::ConfStruct {
     conf_struct
 }
 
-pub fn parse_cli_options() -> configuration::ConfStruct {
+pub fn parse_cli_options() -> ConfStruct {
     let args: Vec<String> = env::args().collect();
     parse_options(args)
 }
