@@ -1,22 +1,13 @@
 use crate::configuration::ConfStruct;
-use regex;
-use std::fs::ReadDir;
-use std::path::PathBuf;
+use std::path::Path;
 
-/// Returns a vector of all paths that aren't excluded by conf.exclude_strings
-pub fn filter_paths(paths: ReadDir, conf: &ConfStruct) -> Vec<PathBuf> {
+/// Returns if a path is considered `filtered` by looking at info from the `ConfStruct`
+pub fn is_filtered(path: &Path, conf: &ConfStruct) -> bool {
     // TODO: Handle when destination is in source
-    let mut result: Vec<PathBuf> = Vec::new();
-    for path in paths {
-        match path {
-            Err(why) => panic!("Something bad happened: {}", why),
-            Ok(path) => {
-                let p = path.file_name().into_string().unwrap();
-                if !conf.exclude_strings.contains(&p) && !conf.exclude_regex.is_match(&p) {
-                    result.push(path.path());
-                }
-            }
-        };
+    let p = path.strip_prefix("./").unwrap().display().to_string();
+    println!("The path to filter: {}", p);
+    if !conf.exclude_strings.contains(&p) && !conf.exclude_regex.is_match(&p) {
+        return false;
     }
-    result
+    true
 }

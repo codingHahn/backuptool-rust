@@ -1,21 +1,24 @@
 use std::fs;
 use std::io;
 use std::path::Path;
+use crate::configuration::ConfStruct;
+use crate::path_filter;
 
 // TODO: Test
-pub fn backup(src: &Path, dest_folder: &Path) -> Result<(), io::Error> {
+
+/// Copies all files from `src` to `dest_folder` while considering the excludes
+/// set in the `conf` struct
+pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), io::Error> {
+    // Early return here, if path is in exclude_regex or exclude_strings
+    // If it passes this step, the path will be processed
+    if path_filter::is_filtered(&src, &conf) {
+        return Ok(());
+    }
     let file_dest = dest_folder.join(src);
     println!("{:?} will be copied to {:?}", src, file_dest);
 
-    // Check if `src` and `file_dest` are the same. To do that, we
-    // convert both paths to absolute paths. FIXME: Due to symlinking and other
-    // shenanigans, this is not exhaustive, but should be good enough for now
-    let source_full = fs::canonicalize(&src).unwrap();
-    let dest_full = std::env::current_dir().unwrap().join(&dest_folder);
-    if source_full == dest_full {
-        // We have to abort here, otherwise we will infinitely copy to and from dest,
-        // because we will write some stuff in there, look inside and find the files we
-        // have written just now and write them again to the directory
+    // Checks if we encountered the backup folder
+    if are_equal(&src, &dest_folder) == true {
         println!("Source and destination are the same; skipping");
         return Ok(());
     }
@@ -52,10 +55,9 @@ pub fn backup(src: &Path, dest_folder: &Path) -> Result<(), io::Error> {
         if let Err(_) = fs::create_dir(&file_dest) {
             println!("Folder {:?} already exists", file_dest);
         }
-        // TODO: Need to apply exclude_regex once implemented
         for file in files_in_folder {
             if let Ok(f) = file {
-                if let Err(why) = backup(&f.path(), &dest_folder) {
+                if let Err(why) = backup(&f.path(), &dest_folder, &conf) {
                     eprintln!(
                         "Copying {:?} to {:?} failed, because of {:?}",
                         f, dest_folder, why
@@ -66,4 +68,20 @@ pub fn backup(src: &Path, dest_folder: &Path) -> Result<(), io::Error> {
     }
 
     return Ok(());
+}
+
+/// Check if `src` and `file_dest` are the same. To do that, we
+/// convert both paths to absolute paths. FIXME: Due to symlinking and other
+/// shenanigans, this is not exhaustive, but should be good enough for now
+fn are_equal(path1: &Path, path2: &Path) -> bool {
+    let source_full = fs::canonicalize(&path1).unwrap();
+    let dest_full = std::env::current_dir().unwrap().join(&path2);
+    if source_full == dest_full {
+        // We have to abort here, otherwise we will infinitely copy to and from dest,
+        // because we will write some stuff in there, look inside and find the files we
+        // have written just now and write them again to the directory
+        return true;
+    }
+    false
+
 }
