@@ -1,19 +1,35 @@
 use std::fs;
+use std::io;
 use std::path::Path;
 
 // TODO: Test
-pub fn backup(src: &Path, dest_folder: &Path) -> std::io::Result<()> {
+pub fn backup(src: &Path, dest_folder: &Path) -> Result<(), io::Error> {
     let file_dest = dest_folder.join(src);
     println!("{:?} will be copied to {:?}", src, file_dest);
 
-    // Check if `src` and `file_dest` are the same
-    if src == file_dest{
+    // Check if `src` and `file_dest` are the same. To do that, we
+    // convert both paths to absolute paths. FIXME: Due to symlinking and other
+    // shenanigans, this is not exhaustive, but should be good enough for now
+    let source_full = fs::canonicalize(&src).unwrap();
+    let dest_full = std::env::current_dir().unwrap().join(&dest_folder);
+    if source_full == dest_full {
+        // We have to abort here, otherwise we will infinitely copy to and from dest,
+        // because we will write some stuff in there, look inside and find the files we
+        // have written just now and write them again to the directory
         println!("Source and destination are the same; skipping");
         return Ok(());
     }
 
     // Make sure the `dest_folder` exists
-    let _ = fs::create_dir(&dest_folder);
+    let res = fs::create_dir(dest_folder);
+
+    match res {
+        // We need to explicitly allow this case, because a backup folder will
+        // be created once and written into many times
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => (),
+        Err(e) => return Err(e),
+        Ok(()) => (),
+    }
 
     // We need to handle when `path` is a folder, because then we need to recursively copy
     // the file tree
@@ -33,20 +49,21 @@ pub fn backup(src: &Path, dest_folder: &Path) -> std::io::Result<()> {
         let files_in_folder = fs::read_dir(src)?;
         println!("Folder detected! Copying recursively");
         println!("Contents found: {:?}", files_in_folder);
-        let exists_folder = fs::create_dir(&file_dest);
-        match exists_folder {
-            Err(_) => println!("Folder {:?} already exists", file_dest),
-            _ => (),
-        };
-
+        if let Err(_) = fs::create_dir(&file_dest) {
+            println!("Folder {:?} already exists", file_dest);
+        }
         // TODO: Need to apply exclude_regex once implemented
         for file in files_in_folder {
             if let Ok(f) = file {
-                backup(&f.path(), &dest_folder)?;
+                if let Err(why) = backup(&f.path(), &dest_folder) {
+                    eprintln!(
+                        "Copying {:?} to {:?} failed, because of {:?}",
+                        f, dest_folder, why
+                    );
+                };
             };
         }
     }
 
     return Ok(());
 }
-

@@ -2,7 +2,7 @@ use crate::configuration::ConfStruct;
 use std::fs::ReadDir;
 use std::path::PathBuf;
 
-/// Returns a vector of all paths that aren't excluded by conf.exclude_patterns
+/// Returns a vector of all paths that aren't excluded by conf.exclude_strings
 pub fn filter_paths(paths: ReadDir, conf: &ConfStruct) -> Vec<PathBuf> {
     // TODO: Handle when destination is in source
     let mut result: Vec<PathBuf> = Vec::new();
@@ -11,7 +11,7 @@ pub fn filter_paths(paths: ReadDir, conf: &ConfStruct) -> Vec<PathBuf> {
             Err(why) => panic!("Something bad happened: {}", why),
             Ok(path) => {
                 let p = path.file_name().into_string().unwrap();
-                if !conf.exclude_patterns.contains(&p) {
+                if !conf.exclude_strings.contains(&p) {
                     result.push(path.path());
                 }
             }
