@@ -97,13 +97,13 @@ fn print_help_message() {
 
 pub fn parse_options(args: Vec<String>) -> Result<ConfStruct, String> {
     // first collect all fields of ConfStruct seperately
-    let mut conf_struct = ConfStruct {
-        exclude_strings: Vec::new(),
-        exclude_regex: RegexSet::new(&[""]).unwrap(), //empty RegexSet, whill be replaced later
-        source: PathBuf::new(),
-        destination: PathBuf::new(),
-        verbose: false,
-    };
+    let mut conf_struct = ConfStruct::new (
+        Vec::new(),
+        RegexSet::new(&[""]).unwrap(), //empty RegexSet, whill be replaced later
+        PathBuf::new(),
+        PathBuf::new(),
+        false,
+    );
 
     // Vec<String> to collect all regex first (RegexSet doesn't have .push())
     let mut conf_exclude_regex: Vec<String> = Vec::new();
