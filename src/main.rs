@@ -1,8 +1,17 @@
+extern crate cdchunking;
+extern crate blake3;
+extern crate serde;
+extern crate serde_json;
+
 mod backup;
 mod cli_parser;
 mod configuration;
 mod path_filter;
+mod chunked_writer;
+mod ChunkedFile;
+mod index_manager;
 use std::env;
+
 
 #[cfg(test)]
 mod cli_tests;

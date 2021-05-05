@@ -3,6 +3,7 @@ use std::io;
 use std::path::Path;
 use crate::configuration::ConfStruct;
 use crate::path_filter;
+use crate::ChunkedFile;
 
 // TODO: Test
 
@@ -24,7 +25,8 @@ pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), i
     }
 
     // Make sure the `dest_folder` exists
-    let res = fs::create_dir(dest_folder);
+    let res = fs::create_dir(&dest_folder);
+    let res = fs::create_dir(&dest_folder.join("chunks/"));
 
     match res {
         // We need to explicitly allow this case, because a backup folder will
@@ -41,12 +43,13 @@ pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), i
             // If it already exists, we need to compare last edited timestamps
             println!("File {:?} already exists at destination", file_dest);
 
+            //TODO: Refactor for chunked file + index implementation
             if file_dest.metadata()?.modified()? < src.metadata()?.modified()? {
                 println!("The file was modified since last backup");
-                fs::copy(src, file_dest)?;
+                ChunkedFile::ChunkedFile::from_path(src.to_path_buf(), &conf)?;
             }
         } else {
-            fs::copy(src, file_dest)?;
+            ChunkedFile::ChunkedFile::from_path(src.to_path_buf(), &conf)?;
         }
     } else {
         let files_in_folder = fs::read_dir(src)?;
