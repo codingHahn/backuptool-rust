@@ -97,7 +97,7 @@ fn print_help_message() {
 
 pub fn parse_options(args: Vec<String>) -> Result<ConfStruct, String> {
     // first collect all fields of ConfStruct seperately
-    let mut conf_struct = ConfStruct::new (
+    let mut conf_struct = ConfStruct::new(
         Vec::new(),
         RegexSet::new(&[""]).unwrap(), //empty RegexSet, whill be replaced later
         PathBuf::new(),

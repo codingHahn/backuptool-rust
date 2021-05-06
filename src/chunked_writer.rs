@@ -1,8 +1,7 @@
 use std::fs;
+use std::fs::File;
 use std::io;
 use std::path::Path;
-use std::fs::File;
-
 
 //pub fn chunker(src: &Path, dest: &Path) -> Result<(), io::Error> {
 //    let chunker = Chunker::new(ZPAQ::new(14));

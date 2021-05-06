@@ -10,7 +10,19 @@ pub struct ConfStruct {
 }
 
 impl ConfStruct {
-    pub fn new(exclude_strings: Vec<String>, exclude_regex: RegexSet, source: PathBuf, destination: PathBuf, verbose: bool) -> Self {
-        ConfStruct{ exclude_strings: exclude_strings, exclude_regex: exclude_regex, source: source, destination: destination, verbose: verbose }
+    pub fn new(
+        exclude_strings: Vec<String>,
+        exclude_regex: RegexSet,
+        source: PathBuf,
+        destination: PathBuf,
+        verbose: bool,
+    ) -> Self {
+        ConfStruct {
+            exclude_strings: exclude_strings,
+            exclude_regex: exclude_regex,
+            source: source,
+            destination: destination,
+            verbose: verbose,
+        }
     }
 }

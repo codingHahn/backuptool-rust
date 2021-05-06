@@ -1,9 +1,10 @@
+use crate::configuration::ConfStruct;
+use crate::index_manager;
+use crate::path_filter;
+use crate::ChunkedFile;
 use std::fs;
 use std::io;
 use std::path::Path;
-use crate::configuration::ConfStruct;
-use crate::path_filter;
-use crate::ChunkedFile;
 
 // TODO: Test
 
@@ -49,7 +50,12 @@ pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), i
                 ChunkedFile::ChunkedFile::from_path(src.to_path_buf(), &conf)?;
             }
         } else {
-            ChunkedFile::ChunkedFile::from_path(src.to_path_buf(), &conf)?;
+            let mut chunks: Vec<ChunkedFile::ChunkedFile> = Vec::new();
+            chunks.push(ChunkedFile::ChunkedFile::from_path(
+                src.to_path_buf(),
+                &conf,
+            )?);
+            index_manager::write_index_file(&chunks, Path::new("index.index"));
         }
     } else {
         let files_in_folder = fs::read_dir(src)?;
@@ -86,5 +92,4 @@ fn are_equal(path1: &Path, path2: &Path) -> bool {
         return true;
     }
     false
-
 }
