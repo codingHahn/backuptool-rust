@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io;
+use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, UNIX_EPOCH};
@@ -11,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChunkedFile {
     //TODO Permissions and other Metadata
-    pub chunks: Vec<[u8; 32]>,
+    pub chunks: Vec<String>,
     pub path: PathBuf,
     pub last_modified: u128,
     pub created: u128,
@@ -55,9 +56,33 @@ impl ChunkedFile {
             println!("Here is the path: {:?}", dest_path);
             let mut fp = File::create(dest_path)?;
             fp.write_all(&chunk)?;
-            chunked_file.chunks.push(hash.as_bytes().to_owned());
+            chunked_file.chunks.push(hash.to_hex().to_string());
         }
 
         Ok(chunked_file)
+    }
+
+    pub fn to_bytes(self, conf: &ConfStruct) -> Result<Vec<u8>, io::Error>{
+
+        let mut big_vec : Vec<u8> = Vec::new();
+
+        for chunk_hash in self.chunks {
+            // Convert Hash to String
+            let chunk_path = &conf.destination.join("chunks/")
+                .join(&chunk_hash);
+
+            println!("Chunked file path: {:?}", chunk_path);
+
+            // try to open file with hash as name
+            let mut chunk_file = File::open(chunk_path)?;
+            // try to read file with hash as name
+            let mut chunk_data : Vec<u8> = Vec::new();
+            chunk_file.read_to_end(&mut chunk_data)?;
+
+            // append all chunks to one file
+            big_vec.extend(chunk_data);
+        } 
+        // write that file to self.path (relative?)
+        Ok(big_vec)
     }
 }

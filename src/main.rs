@@ -25,6 +25,9 @@ fn main() {
     backup::backup(&config.source, &config.destination, &config).unwrap();
 
     // Test index
-    let ret = index_manager::read_index_file(Path::new("index.index"));
+    let ret = index_manager::read_index_file(Path::new("index.index")).unwrap();
     println!("The returned thing was: {:?}", ret);
+    for i in ret {
+        println!("Big file dump: {:?}", i.to_bytes(&config));
+    }
 }
