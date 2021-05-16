@@ -16,9 +16,11 @@ use std::process;
 mod cli_tests;
 
 fn main() {
-    // A example config to test the implementation
+    // Get the configuration for this run of the program
     let args: Vec<String> = env::args().collect();
     let c = cli_parser::parse_options(args);
+
+    // Placeholder Vec<ChunkedFile> 
     let mut chunked_files = Vec::new();
     match c {
         Ok(config) => {
@@ -32,6 +34,10 @@ fn main() {
                         &config,
                     )
                     .unwrap();
+                    // After backup up all files, update the index file
+                    // This is done at the end because it is expensive
+                    // and an error in the backup routine can't destroy
+                    // the index file
                     index_manager::write_index_file(
                         &chunked_files,
                         &config.destination.join("index.index"),
@@ -40,8 +46,11 @@ fn main() {
                 }
                 // User selected restore as option
                 configuration::Operation::Restore => {
-                    backup::restore(&config);
+                    if let Err(err) = backup::restore(&config) {
+                        println!("Error during restoring files: {}", err);
+                    }
                 }
+                // This case is handled by cli_parser. This should never execute
                 configuration::Operation::None => {
                     process::exit(-1);
                 }

@@ -8,6 +8,7 @@ pub enum Operation {
     Restore,
 }
 
+/// This struct holds all the info neccessary to run a backup or restore routine
 pub struct ConfStruct {
     pub exclude_strings: Vec<String>,
     pub exclude_regex: RegexSet,
