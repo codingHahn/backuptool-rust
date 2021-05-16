@@ -2,14 +2,13 @@ use std::fs::File;
 use std::io;
 use std::io::Read;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, UNIX_EPOCH};
 
-use crate::configuration::ConfStruct;
 use cdchunking::{Chunker, ZPAQ};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct ChunkedFile {
     //TODO Permissions and other Metadata
     pub chunks: Vec<String>,
@@ -27,7 +26,7 @@ impl ChunkedFile {
             created: 0,
         }
     }
-    pub fn from_path(path: PathBuf, conf: &ConfStruct) -> Result<Self, io::Error> {
+    pub fn from_path(path: PathBuf, repo_path: &Path) -> Result<Self, io::Error> {
         let file = File::open(&path)?;
         let mut chunked_file = ChunkedFile::new();
         chunked_file.path = path;
@@ -49,10 +48,7 @@ impl ChunkedFile {
         for chunk in chunks {
             let hash = blake3::hash(&chunk);
             println!("Here is the chunk hash {:?}", hash);
-            let dest_path = &conf
-                .destination
-                .join("chunks/")
-                .join(&hash.to_hex().to_string());
+            let dest_path = &repo_path.join("chunks/").join(&hash.to_hex().to_string());
             println!("Here is the path: {:?}", dest_path);
             let mut fp = File::create(dest_path)?;
             fp.write_all(&chunk)?;
@@ -62,26 +58,24 @@ impl ChunkedFile {
         Ok(chunked_file)
     }
 
-    pub fn to_bytes(self, conf: &ConfStruct) -> Result<Vec<u8>, io::Error>{
+    pub fn to_bytes(&self, repo_path: &Path) -> Result<Vec<u8>, io::Error> {
+        let mut big_vec: Vec<u8> = Vec::new();
 
-        let mut big_vec : Vec<u8> = Vec::new();
-
-        for chunk_hash in self.chunks {
+        for chunk_hash in &self.chunks {
             // Convert Hash to String
-            let chunk_path = &conf.destination.join("chunks/")
-                .join(&chunk_hash);
+            let chunk_path = &repo_path.join("chunks/").join(&chunk_hash);
 
             println!("Chunked file path: {:?}", chunk_path);
 
             // try to open file with hash as name
             let mut chunk_file = File::open(chunk_path)?;
             // try to read file with hash as name
-            let mut chunk_data : Vec<u8> = Vec::new();
+            let mut chunk_data: Vec<u8> = Vec::new();
             chunk_file.read_to_end(&mut chunk_data)?;
 
             // append all chunks to one file
             big_vec.extend(chunk_data);
-        } 
+        }
         // write that file to self.path (relative?)
         Ok(big_vec)
     }

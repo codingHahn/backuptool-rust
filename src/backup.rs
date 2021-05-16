@@ -1,7 +1,6 @@
 use crate::configuration::ConfStruct;
-use crate::index_manager;
 use crate::path_filter;
-use crate::ChunkedFile;
+use crate::ChunkedFile::ChunkedFile;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -10,25 +9,29 @@ use std::path::Path;
 
 /// Copies all files from `src` to `dest_folder` while considering the excludes
 /// set in the `conf` struct
-pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), io::Error> {
+pub fn backup(
+    src: &Path,
+    repo_path: &Path,
+    chunked_files: &mut Vec<ChunkedFile>,
+    conf: &ConfStruct,
+) -> Result<(), io::Error> {
     // Early return here, if path is in exclude_regex or exclude_strings
     // If it passes this step, the path will be processed
     if path_filter::is_filtered(&src, &conf) {
         return Ok(());
     }
-    let file_dest = dest_folder.join(src);
-    println!("{:?} will be copied to {:?}", src, file_dest);
-
-    // Checks if we encountered the backup folder
-    if are_equal(&src, &dest_folder) == true {
-        println!("Source and destination are the same; skipping");
-        return Ok(());
-    }
 
     // Make sure the `dest_folder` exists
-    let res = fs::create_dir(&dest_folder);
-    let res = fs::create_dir(&dest_folder.join("chunks/"));
+    let res = fs::create_dir(&repo_path);
+    match res {
+        // We need to explicitly allow this case, because a backup folder will
+        // be created once and written into many times
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => (),
+        Err(e) => return Err(e),
+        Ok(()) => (),
+    }
 
+    let res = fs::create_dir(&repo_path.join("chunks/"));
     match res {
         // We need to explicitly allow this case, because a backup folder will
         // be created once and written into many times
@@ -40,37 +43,15 @@ pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), i
     // We need to handle when `path` is a folder, because then we need to recursively copy
     // the file tree
     if !src.is_dir() {
-        if file_dest.exists() {
-            // If it already exists, we need to compare last edited timestamps
-            println!("File {:?} already exists at destination", file_dest);
-
-            //TODO: Refactor for chunked file + index implementation
-            if file_dest.metadata()?.modified()? < src.metadata()?.modified()? {
-                println!("The file was modified since last backup");
-                ChunkedFile::ChunkedFile::from_path(src.to_path_buf(), &conf)?;
-            }
-        } else {
-            let mut chunks: Vec<ChunkedFile::ChunkedFile> = Vec::new();
-            chunks.push(ChunkedFile::ChunkedFile::from_path(
-                src.to_path_buf(),
-                &conf,
-            )?);
-            index_manager::write_index_file(&chunks, Path::new("index.index"));
-        }
+        chunked_files.push(ChunkedFile::from_path(src.to_path_buf(), &repo_path)?);
     } else {
         let files_in_folder = fs::read_dir(src)?;
         println!("Folder detected! Copying recursively");
         println!("Contents found: {:?}", files_in_folder);
-        if let Err(_) = fs::create_dir(&file_dest) {
-            println!("Folder {:?} already exists", file_dest);
-        }
         for file in files_in_folder {
             if let Ok(f) = file {
-                if let Err(why) = backup(&f.path(), &dest_folder, &conf) {
-                    eprintln!(
-                        "Copying {:?} to {:?} failed, because of {:?}",
-                        f, dest_folder, why
-                    );
+                if let Err(why) = backup(&f.path(), &repo_path, chunked_files, &conf) {
+                    eprintln!("Backing up {:?} failed, because of {:?}", f, why);
                 };
             };
         }
@@ -78,6 +59,23 @@ pub fn backup(src: &Path, dest_folder: &Path, conf: &ConfStruct) -> Result<(), i
 
     return Ok(());
 }
+
+/*
+pub fn restore(path: &Path, &conf: ConfStruct){
+    let file_dest = dest_folder.join(src);
+    println!("{:?} will be copied to {:?}", src, file_dest);
+
+    // Checks if we encountered the backup folder
+    if are_equal(&src, &dest_folder) == true {
+        println!("Source and destination are the same; skipping");
+        return Ok(());
+    }
+
+
+
+
+}
+*/
 
 /// Check if `src` and `file_dest` are the same. To do that, we
 /// convert both paths to absolute paths. FIXME: Due to symlinking and other
