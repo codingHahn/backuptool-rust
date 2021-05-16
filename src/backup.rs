@@ -1,8 +1,11 @@
 use crate::configuration::ConfStruct;
+use crate::index_manager;
 use crate::path_filter;
-use crate::ChunkedFile::ChunkedFile;
+use crate::chunked_file::ChunkedFile;
 use std::fs;
+use std::fs::File;
 use std::io;
+use std::io::Write;
 use std::path::Path;
 
 // TODO: Test
@@ -60,34 +63,48 @@ pub fn backup(
     return Ok(());
 }
 
-/*
-pub fn restore(path: &Path, &conf: ConfStruct){
-    let file_dest = dest_folder.join(src);
-    println!("{:?} will be copied to {:?}", src, file_dest);
-
-    // Checks if we encountered the backup folder
-    if are_equal(&src, &dest_folder) == true {
-        println!("Source and destination are the same; skipping");
-        return Ok(());
+/// Restore all files from the repository
+pub fn restore(config: &ConfStruct) -> Result<(), io::Error> {
+    let index = index_manager::read_index_file(&config.source.join(Path::new("index.index")))?;
+    for chunked_file in index {
+        // Figure out path. The strip_prefix is needed, because joining with 
+        // an absolute path just uses the absolute path. Otherwise this could end in dataloss
+        let path = &config.destination.join(
+            &chunked_file
+                .path
+                .strip_prefix("/")
+                .unwrap_or(&chunked_file.path),
+        );
+        if let Ok(bytes) = &chunked_file.to_bytes(&config.source) {
+            // Create all directories on the way. We don't save directories in
+            // the ChunkedFile struct. This probably has unhandled edgecases
+            let res = fs::create_dir_all(&path.parent().unwrap());
+            match res {
+                // We need to explicitly allow this case, because a restored folder 
+                // could already exist
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => (),
+                Err(e) => return Err(e),
+                Ok(()) => (),
+            }
+            // Get file handle
+            let mut file = File::create(&config.destination.join(&chunked_file.path))?;
+            if let Err(err) = file.write_all(&bytes) {
+                println!(
+                    "Could not restore File at {:?} because of error {}",
+                    chunked_file.path, err
+                );
+            } else {
+                println!("Restored file {:?}", path);
+            }
+        } else {
+            // If this happens, some chunks from the file are missing. This probably means
+            // that the repository is in an unsafe state. Will lead to dataloss. TODO: Implement
+            // repository checksumming and health checks
+            println!(
+                "Could not restore File at {:?} because of it could not be hydrated",
+                path
+            );
+        }
     }
-
-
-
-
-}
-*/
-
-/// Check if `src` and `file_dest` are the same. To do that, we
-/// convert both paths to absolute paths. FIXME: Due to symlinking and other
-/// shenanigans, this is not exhaustive, but should be good enough for now
-fn are_equal(path1: &Path, path2: &Path) -> bool {
-    let source_full = fs::canonicalize(&path1).unwrap();
-    let dest_full = std::env::current_dir().unwrap().join(&path2);
-    if source_full == dest_full {
-        // We have to abort here, otherwise we will infinitely copy to and from dest,
-        // because we will write some stuff in there, look inside and find the files we
-        // have written just now and write them again to the directory
-        return true;
-    }
-    false
+    Ok(())
 }

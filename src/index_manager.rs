@@ -3,7 +3,7 @@ use std::io;
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
 
-use crate::ChunkedFile::ChunkedFile;
+use crate::chunked_file::ChunkedFile;
 use serde_json;
 
 // TODO: mmap file so that updating a file does not require rewriting the whole file

@@ -18,6 +18,7 @@ pub struct ChunkedFile {
 }
 
 impl ChunkedFile {
+    /// Creates new instance of `ChunkedFile`
     pub fn new() -> Self {
         ChunkedFile {
             chunks: Vec::new(),
@@ -26,10 +27,14 @@ impl ChunkedFile {
             created: 0,
         }
     }
+
+    /// Constructs a `ChunkedFile` by reading and chunking the file at `path`
     pub fn from_path(path: PathBuf, repo_path: &Path) -> Result<Self, io::Error> {
         let file = File::open(&path)?;
         let mut chunked_file = ChunkedFile::new();
         chunked_file.path = path;
+
+        // Read the metadata that's currently supported
         chunked_file.last_modified = file
             .metadata()?
             .modified()?
@@ -43,13 +48,14 @@ impl ChunkedFile {
             .unwrap_or(Duration::new(0, 0))
             .as_millis();
 
+        // Create a chunker with 16KiB block size
         let chunker = Chunker::new(ZPAQ::new(14));
         let chunks: Vec<Vec<u8>> = chunker.all_chunks(file)?;
+
+        // Hash and save all chunks individually
         for chunk in chunks {
             let hash = blake3::hash(&chunk);
-            println!("Here is the chunk hash {:?}", hash);
             let dest_path = &repo_path.join("chunks/").join(&hash.to_hex().to_string());
-            println!("Here is the path: {:?}", dest_path);
             let mut fp = File::create(dest_path)?;
             fp.write_all(&chunk)?;
             chunked_file.chunks.push(hash.to_hex().to_string());
@@ -58,25 +64,26 @@ impl ChunkedFile {
         Ok(chunked_file)
     }
 
+    /// Returns the raw bytes of the file represented by `ChunkedFile` by iterating
+    /// over it's chunks, reading them from the disk an then putting them together
     pub fn to_bytes(&self, repo_path: &Path) -> Result<Vec<u8>, io::Error> {
+        // Will hold the whole file at once
         let mut big_vec: Vec<u8> = Vec::new();
 
+        // TODO: set right metadata
         for chunk_hash in &self.chunks {
-            // Convert Hash to String
             let chunk_path = &repo_path.join("chunks/").join(&chunk_hash);
 
-            println!("Chunked file path: {:?}", chunk_path);
-
-            // try to open file with hash as name
+            // Open the chunk. If it doesn't exist, something's wrong
             let mut chunk_file = File::open(chunk_path)?;
-            // try to read file with hash as name
+
+            // Temporary buffer for the reader to write into
             let mut chunk_data: Vec<u8> = Vec::new();
             chunk_file.read_to_end(&mut chunk_data)?;
 
-            // append all chunks to one file
+            // Merge temporary buffer into main file buffer
             big_vec.extend(chunk_data);
         }
-        // write that file to self.path (relative?)
         Ok(big_vec)
     }
 }
