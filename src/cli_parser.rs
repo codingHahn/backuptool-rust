@@ -1,4 +1,4 @@
-use crate::configuration::ConfStruct;
+use crate::configuration::{ConfStruct, Operation};
 use std::env;
 use std::path::PathBuf;
 
@@ -15,6 +15,8 @@ enum CLIOptions {
     ExcludeRegex {
         regex: String,
     },
+    OperationBackup,
+    OperationRestore,
     Help,
     Verbose,
     End,
@@ -25,6 +27,8 @@ fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOption
         // Exclude pattern in next element
         None => return (index, Ok(CLIOptions::End)),
         Some(arg0) => match arg0.as_str().trim() {
+            "backup" => return (index + 1, Ok(CLIOptions::OperationBackup)),
+            "restore" => return (index + 1, Ok(CLIOptions::OperationRestore)),
             // Exclude String:
             "-e" => match args.get(index + 1) {
                 None => return (index, Err(String::from("missing Argument after -e"))),
@@ -38,8 +42,8 @@ fn get_option_type(args: &Vec<String>, index: usize) -> (usize, Result<CLIOption
                 }
             },
             //Exclude regex
-            "-er" => match args.get(index + 1) {
-                None => return (index, Err(String::from("missing Argument after -er"))),
+            "-r" => match args.get(index + 1) {
+                None => return (index, Err(String::from("missing Argument after -r"))),
                 Some(arg1) => {
                     return (
                         index + 2,
@@ -82,9 +86,13 @@ fn print_help_message() {
     // Help message:
     println!(
         r#"
-    usage: backup-tool [options] <source> <destination>
-        <source>        : Sourcepath for the backup
-        <destination>   : Destination path for the backup
+    usage: backup-tool [options] backup|restore <src> <dest>
+        backup          : Backup the the following path
+        restore         : Restore the the following path
+        <src>           : Source of the operation: files to backup for backup operation and
+                        | the repository for restore operation
+        <dest>          : Destination of the operation: repository for backup operation and
+                        | the destination folder for restore operation
         options :
             -e          : Folder or File to exclude (can be given more than once)
             -er         : Regular expression to exclude (can be given more than once)
@@ -97,12 +105,13 @@ fn print_help_message() {
 
 pub fn parse_options(args: Vec<String>) -> Result<ConfStruct, String> {
     // first collect all fields of ConfStruct seperately
-    let mut conf_struct = ConfStruct::new (
+    let mut conf_struct = ConfStruct::new(
         Vec::new(),
         RegexSet::new(&[""]).unwrap(), //empty RegexSet, whill be replaced later
         PathBuf::new(),
         PathBuf::new(),
         false,
+        Operation::None,
     );
 
     // Vec<String> to collect all regex first (RegexSet doesn't have .push())
@@ -124,17 +133,14 @@ pub fn parse_options(args: Vec<String>) -> Result<ConfStruct, String> {
                     source,
                     destination,
                 } => {
-                    if !conf_struct.destination.as_os_str().is_empty() {
-                        return Err(error_message(
-                            &index,
-                            String::from("destination given to often"),
-                        ));
-                    } else if !conf_struct.source.as_os_str().is_empty() {
-                        return Err(error_message(&index, String::from("source given to often")));
-                    } else {
-                        conf_struct.destination = destination;
-                        conf_struct.source = source;
-                    }
+                    conf_struct.source = source;
+                    conf_struct.destination = destination;
+                }
+                CLIOptions::OperationBackup => {
+                    conf_struct.operation = Operation::Backup;
+                }
+                CLIOptions::OperationRestore => {
+                    conf_struct.operation = Operation::Restore;
                 }
                 CLIOptions::ExcludeString { string } => {
                     conf_struct.exclude_strings.push(string);
@@ -154,10 +160,16 @@ pub fn parse_options(args: Vec<String>) -> Result<ConfStruct, String> {
         }
     }
 
+    if conf_struct.operation == Operation::None {
+        return Err(error_message(
+            &0,
+            String::from("Operation not given. Please specify either backup or restore"),
+        ));
+    }
     if conf_struct.source.as_os_str().is_empty() || conf_struct.destination.as_os_str().is_empty() {
         return Err(error_message(
             &0,
-            String::from("Source or Destination not given"),
+            String::from("Source or destination does not given. Please specify a path"),
         ));
     }
     //return ConfStruct
