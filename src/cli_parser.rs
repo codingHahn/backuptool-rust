@@ -86,10 +86,13 @@ fn print_help_message() {
     // Help message:
     println!(
         r#"
-    usage: backup-tool [options] backup|restore <path>
+    usage: backup-tool [options] backup|restore <src> <dest>
         backup          : Backup the the following path
         restore         : Restore the the following path
-        <path>          : Destination path for the backup
+        <src>           : Source of the operation: files to backup for backup operation and
+                        | the repository for restore operation
+        <dest>          : Destination of the operation: repository for backup operation and
+                        | the destination folder for restore operation
         options :
             -e          : Folder or File to exclude (can be given more than once)
             -er         : Regular expression to exclude (can be given more than once)

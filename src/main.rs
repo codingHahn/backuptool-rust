@@ -3,13 +3,14 @@ extern crate cdchunking;
 extern crate serde;
 extern crate serde_json;
 
-mod chunked_file;
 mod backup;
+mod chunked_file;
 mod cli_parser;
 mod configuration;
 mod index_manager;
 mod path_filter;
 use std::env;
+use std::path::Path;
 use std::process;
 
 #[cfg(test)]
@@ -20,7 +21,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let c = cli_parser::parse_options(args);
 
-    // Placeholder Vec<ChunkedFile> 
+    // Placeholder Vec<ChunkedFile>
     let mut chunked_files = Vec::new();
     match c {
         Ok(config) => {
@@ -34,6 +35,7 @@ fn main() {
                         &config,
                     )
                     .unwrap();
+
                     // After backup up all files, update the index file
                     // This is done at the end because it is expensive
                     // and an error in the backup routine can't destroy
@@ -44,9 +46,15 @@ fn main() {
                     )
                     .unwrap();
                 }
+
                 // User selected restore as option
                 configuration::Operation::Restore => {
-                    if let Err(err) = backup::restore(&config) {
+                    let index = index_manager::read_index_file(
+                        &config.source.join(Path::new("index.index")),
+                    )
+                    .unwrap();
+
+                    if let Err(err) = backup::restore(&config, &index) {
                         println!("Error during restoring files: {}", err);
                     }
                 }

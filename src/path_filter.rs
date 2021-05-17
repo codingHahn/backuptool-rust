@@ -10,9 +10,12 @@ pub fn is_filtered(path: &Path, conf: &ConfStruct) -> bool {
     } else {
         p = path.display().to_string();
     }
+
     println!("The path to filter: {}", p);
+
     if !conf.exclude_strings.contains(&p) && !conf.exclude_regex.is_match(&p) {
         return false;
     }
+
     true
 }
